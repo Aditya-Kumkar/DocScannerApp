@@ -49,6 +49,7 @@ fun HomeScreen(
     val statusMessage by viewModel.statusMessage.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val userNotice by viewModel.userNotice.collectAsState()
+    val autoOptimizeScans by viewModel.autoOptimizeScans.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val context = LocalContext.current
 
@@ -142,6 +143,17 @@ fun HomeScreen(
                         }
                     },
                     actions = {
+                        IconButton(
+                            onClick = { viewModel.toggleAutoOptimizeScans() },
+                            modifier = Modifier.padding(end = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Compress,
+                                contentDescription = if (autoOptimizeScans) "Compact Scans (Adobe Scan style): ON" else "Compact Scans: OFF",
+                                tint = if (autoOptimizeScans) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                         IconButton(
                             onClick = { viewModel.toggleDarkMode() },
                             modifier = Modifier.padding(end = 4.dp)

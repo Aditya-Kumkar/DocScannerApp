@@ -26,7 +26,8 @@ class DocumentRepository(private val context: Context) {
     suspend fun saveScan(
         sourcePdfUri: Uri?,
         pageCount: Int,
-        firstPageUri: Uri?
+        firstPageUri: Uri?,
+        autoOptimize: Boolean = true
     ): ScannedDocument = withContext(Dispatchers.IO) {
         val timestamp = System.currentTimeMillis()
         val dateString = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date(timestamp))
@@ -35,9 +36,23 @@ class DocumentRepository(private val context: Context) {
         val destinationPdfFile = File(scansDir, pdfFileName)
 
         sourcePdfUri?.let { uri ->
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(destinationPdfFile).use { output ->
-                    input.copyTo(output)
+            if (autoOptimize) {
+                val tempFile = File(scansDir, "temp_$pdfFileName")
+                try {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(tempFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    PdfOperations.optimizeScan(context, tempFile, destinationPdfFile)
+                } finally {
+                    if (tempFile.exists()) tempFile.delete()
+                }
+            } else {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(destinationPdfFile).use { output ->
+                        input.copyTo(output)
+                    }
                 }
             }
         }

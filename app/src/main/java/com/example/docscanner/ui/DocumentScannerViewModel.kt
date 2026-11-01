@@ -44,6 +44,9 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
     private val _userNotice = MutableStateFlow<String?>(null)
     val userNotice: StateFlow<String?> = _userNotice.asStateFlow()
 
+    private val _autoOptimizeScans = MutableStateFlow(prefs.getBoolean("auto_optimize_scans", true))
+    val autoOptimizeScans: StateFlow<Boolean> = _autoOptimizeScans.asStateFlow()
+
     private val _themeMode = MutableStateFlow(loadSavedTheme())
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
@@ -68,6 +71,13 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
         }
         _themeMode.value = nextMode
         prefs.edit().putString("theme_mode", nextMode.name).apply()
+    }
+
+    fun toggleAutoOptimizeScans() {
+        val next = !_autoOptimizeScans.value
+        _autoOptimizeScans.value = next
+        prefs.edit().putBoolean("auto_optimize_scans", next).apply()
+        _userNotice.value = if (next) "Compact Scans: ON (Adobe Scan size)" else "Compact Scans: OFF (Original camera size)"
     }
 
     fun loadDocuments() {
@@ -216,7 +226,8 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
                     val savedDoc = repository.saveScan(
                         sourcePdfUri = pdfUri,
                         pageCount = pageCount,
-                        firstPageUri = firstPageUri
+                        firstPageUri = firstPageUri,
+                        autoOptimize = _autoOptimizeScans.value
                     )
                     _documents.value = listOf(savedDoc) + _documents.value
                 }
