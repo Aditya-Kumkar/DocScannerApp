@@ -10,9 +10,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.example.docscanner.ui.DocumentScannerViewModel
 import com.example.docscanner.ui.HomeScreen
-import com.example.docscanner.ui.theme.DocScannerTheme
+import com.example.docscanner.ui.ThemeMode
+import com.example.docscanner.ui.theme.PdfButterTheme
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 
@@ -25,8 +29,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            DocScannerTheme {
-                // Register activity launcher for ML Kit Document Scanner IntentSender
+            val themeMode by viewModel.themeMode.collectAsState()
+            val isDark = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+
+            PdfButterTheme(darkTheme = isDark) {
                 val scannerLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.StartIntentSenderForResult()
                 ) { activityResult ->
@@ -34,7 +44,7 @@ class MainActivity : ComponentActivity() {
                         val result = GmsDocumentScanningResult.fromActivityResultIntent(activityResult.data)
                         viewModel.handleScanResult(result)
                     } else if (activityResult.resultCode != Activity.RESULT_CANCELED) {
-                        Toast.makeText(this, "Scanning cancelled or encountered an issue", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Scanning cancelled", Toast.LENGTH_SHORT).show()
                     }
                 }
 

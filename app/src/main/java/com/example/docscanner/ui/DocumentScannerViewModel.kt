@@ -1,6 +1,7 @@
 package com.example.docscanner.ui
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.docscanner.data.DocumentRepository
@@ -15,8 +16,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class ThemeMode {
+    SYSTEM, LIGHT, DARK
+}
+
 class DocumentScannerViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val prefs = application.getSharedPreferences("pdfbutter_prefs", Context.MODE_PRIVATE)
     private val repository = DocumentRepository(application.applicationContext)
 
     private val _documents = MutableStateFlow<List<ScannedDocument>>(emptyList())
@@ -28,8 +34,30 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _themeMode = MutableStateFlow(loadSavedTheme())
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
     init {
         loadDocuments()
+    }
+
+    private fun loadSavedTheme(): ThemeMode {
+        val saved = prefs.getString("theme_mode", ThemeMode.SYSTEM.name)
+        return try {
+            ThemeMode.valueOf(saved ?: ThemeMode.SYSTEM.name)
+        } catch (e: Exception) {
+            ThemeMode.SYSTEM
+        }
+    }
+
+    fun toggleDarkMode() {
+        val nextMode = when (_themeMode.value) {
+            ThemeMode.SYSTEM -> ThemeMode.DARK
+            ThemeMode.DARK -> ThemeMode.LIGHT
+            ThemeMode.LIGHT -> ThemeMode.SYSTEM
+        }
+        _themeMode.value = nextMode
+        prefs.edit().putString("theme_mode", nextMode.name).apply()
     }
 
     fun loadDocuments() {
@@ -45,13 +73,6 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
-    /**
-     * Builds scanner options matching Adobe Scan capabilities:
-     * - SCANNER_MODE_FULL gives automatic border detection + manual 8-point corner/edge
-     *   border adjustments with magnifying loupe + perspective warp + cleanup filters.
-     * - Enables both JPEG and PDF result formats.
-     * - Supports importing existing images from the gallery.
-     */
     fun buildScannerOptions(pageLimit: Int = 50): GmsDocumentScannerOptions {
         return GmsDocumentScannerOptions.Builder()
             .setGalleryImportAllowed(true)
@@ -61,9 +82,6 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
             .build()
     }
 
-    /**
-     * Handles the result returned by the Document Scanner UI.
-     */
     fun handleScanResult(result: GmsDocumentScanningResult?) {
         if (result == null) return
 
@@ -73,8 +91,6 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
                 val pdf = result.pdf
                 val pdfUri = pdf?.uri
                 val pageCount = pdf?.pageCount ?: result.pages?.size ?: 1
-
-                // First page image if available for thumbnail preview
                 val firstPageUri = result.pages?.firstOrNull()?.imageUri
 
                 if (pdfUri != null) {
@@ -83,13 +99,23 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
                         pageCount = pageCount,
                         firstPageUri = firstPageUri
                     )
-                    // Prepend newly scanned document
                     _documents.value = listOf(savedDoc) + _documents.value
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to save scanned document: ${e.localizedMessage}"
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun renameDocument(document: ScannedDocument, newTitle: String) {
+        viewModelScope.launch {
+            try {
+                val updated = repository.renameDocument(document, newTitle)
+                _documents.value = _documents.value.map { if (it.id == document.id) updated else it }
+            } catch (e: Exception) {
+                _errorMessage.value = "Could not rename document: ${e.localizedMessage}"
             }
         }
     }

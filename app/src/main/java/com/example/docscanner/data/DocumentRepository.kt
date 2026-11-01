@@ -1,12 +1,13 @@
 package com.example.docscanner.data
 
 import android.content.Context
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -34,7 +35,7 @@ class DocumentRepository(private val context: Context) {
     ): ScannedDocument = withContext(Dispatchers.IO) {
         val timestamp = System.currentTimeMillis()
         val dateString = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date(timestamp))
-        val scanId = UUID.randomUUID().toString()
+        val displayTitle = "Scan " + SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(timestamp))
         val pdfFileName = "Scan_$dateString.pdf"
         val destinationPdfFile = File(scansDir, pdfFileName)
 
@@ -64,11 +65,13 @@ class DocumentRepository(private val context: Context) {
             }
         }
 
+        val actualPages = if (pageCount > 0) pageCount else getPdfPageCount(destinationPdfFile)
+
         ScannedDocument(
-            id = scanId,
-            title = "Document $dateString",
+            id = destinationPdfFile.name,
+            title = displayTitle,
             file = destinationPdfFile,
-            pageCount = if (pageCount > 0) pageCount else 1,
+            pageCount = actualPages,
             timestamp = timestamp,
             thumbnailFile = destinationThumbFile
         )
@@ -77,23 +80,79 @@ class DocumentRepository(private val context: Context) {
     suspend fun getDocuments(): List<ScannedDocument> = withContext(Dispatchers.IO) {
         val files = scansDir.listFiles { file -> file.extension.lowercase() == "pdf" } ?: return@withContext emptyList()
         files.sortedByDescending { it.lastModified() }.map { file ->
-            val baseName = file.nameWithoutExtension.removePrefix("Scan_")
-            val thumbCandidate = File(scansDir, "Thumb_$baseName.jpg")
+            val baseName = file.nameWithoutExtension
+            // Check for corresponding thumbnail
+            val thumbName = if (baseName.startsWith("Scan_")) {
+                "Thumb_" + baseName.removePrefix("Scan_") + ".jpg"
+            } else {
+                "Thumb_$baseName.jpg"
+            }
+            val thumbCandidate = File(scansDir, thumbName)
             val thumb = if (thumbCandidate.exists()) thumbCandidate else null
+
+            val title = if (baseName.startsWith("Scan_")) {
+                baseName.replace('_', ' ')
+            } else {
+                baseName
+            }
 
             ScannedDocument(
                 id = file.name,
-                title = file.nameWithoutExtension.replace('_', ' '),
+                title = title,
                 file = file,
-                pageCount = 1, // Default or parse if needed
+                pageCount = getPdfPageCount(file),
                 timestamp = file.lastModified(),
                 thumbnailFile = thumb
             )
         }
     }
 
+    suspend fun renameDocument(document: ScannedDocument, newTitle: String): ScannedDocument = withContext(Dispatchers.IO) {
+        val sanitized = newTitle.trim().replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        if (sanitized.isEmpty() || sanitized == document.title) return@withContext document
+
+        var targetFile = File(scansDir, "$sanitized.pdf")
+        var counter = 1
+        while (targetFile.exists() && targetFile.absolutePath != document.file.absolutePath) {
+            targetFile = File(scansDir, "${sanitized}_$counter.pdf")
+            counter++
+        }
+
+        if (document.file.renameTo(targetFile)) {
+            var updatedThumb = document.thumbnailFile
+            if (document.thumbnailFile != null && document.thumbnailFile.exists()) {
+                val newThumbFile = File(scansDir, "Thumb_${targetFile.nameWithoutExtension}.jpg")
+                document.thumbnailFile.renameTo(newThumbFile)
+                updatedThumb = newThumbFile
+            }
+
+            document.copy(
+                id = targetFile.name,
+                title = targetFile.nameWithoutExtension,
+                file = targetFile,
+                thumbnailFile = updatedThumb
+            )
+        } else {
+            document
+        }
+    }
+
     suspend fun deleteDocument(document: ScannedDocument): Boolean = withContext(Dispatchers.IO) {
         document.thumbnailFile?.delete()
         document.file.delete()
+    }
+
+    private fun getPdfPageCount(file: File): Int {
+        if (!file.exists()) return 1
+        return try {
+            val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            val renderer = PdfRenderer(pfd)
+            val count = renderer.pageCount
+            renderer.close()
+            pfd.close()
+            if (count > 0) count else 1
+        } catch (e: Exception) {
+            1
+        }
     }
 }
