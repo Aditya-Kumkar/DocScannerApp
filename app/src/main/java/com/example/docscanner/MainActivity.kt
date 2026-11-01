@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
                         val options = viewModel.buildScannerOptions(pageLimit = 50)
                         val scannerClient = GmsDocumentScanning.getClient(options)
 
-                        scannerClient.getStartScanIntentSender(this)
+                        scannerClient.getStartScanIntent(this)
                             .addOnSuccessListener { intentSender ->
                                 val request = IntentSenderRequest.Builder(intentSender).build()
                                 scannerLauncher.launch(request)
