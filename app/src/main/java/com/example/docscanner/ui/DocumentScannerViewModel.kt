@@ -41,6 +41,9 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _userNotice = MutableStateFlow<String?>(null)
+    val userNotice: StateFlow<String?> = _userNotice.asStateFlow()
+
     private val _themeMode = MutableStateFlow(loadSavedTheme())
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
@@ -115,6 +118,7 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
                 val mergedDoc = repository.mergeDocuments(selected, outputTitle)
                 _documents.value = listOf(mergedDoc) + _documents.value
                 clearSelection()
+                _userNotice.value = "Merged ${selected.size} PDFs successfully"
             } catch (e: Exception) {
                 _errorMessage.value = "Merge failed: ${e.localizedMessage}"
             } finally {
@@ -133,6 +137,7 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
                 val splitDoc = repository.splitDocument(document, fromPage, toPage, outputTitle)
                 _documents.value = listOf(splitDoc) + _documents.value
                 clearSelection()
+                _userNotice.value = "Extracted pages $fromPage to $toPage"
             } catch (e: Exception) {
                 _errorMessage.value = "Split failed: ${e.localizedMessage}"
             } finally {
@@ -142,17 +147,27 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
-    // Compress operation
-    fun compressDocument(document: ScannedDocument, level: CompressionLevel, outputTitle: String) {
+    // Compress operation (PDF24 Ghostscript-style engine)
+    fun compressDocument(
+        document: ScannedDocument,
+        level: CompressionLevel,
+        convertToGrayscale: Boolean,
+        outputTitle: String
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
-            _statusMessage.value = "Compressing PDF (${level.label})..."
+            _statusMessage.value = "Applying PDF24 compression (${level.label})..."
             try {
-                val compressedDoc = repository.compressDocument(document, level, outputTitle)
+                val compressedDoc = repository.compressDocument(document, level, convertToGrayscale, outputTitle)
+                val diffBytes = (document.file.length() - compressedDoc.file.length()).coerceAtLeast(0L)
+                val pct = if (document.file.length() > 0) {
+                    (diffBytes.toFloat() / document.file.length().toFloat() * 100f).toInt().coerceAtLeast(1)
+                } else 0
                 _documents.value = listOf(compressedDoc) + _documents.value
                 clearSelection()
+                _userNotice.value = "Compressed by $pct% (${formatBytes(diffBytes)} saved)"
             } catch (e: Exception) {
-                _errorMessage.value = "Compression failed: ${e.localizedMessage}"
+                _errorMessage.value = e.localizedMessage ?: "Compression failed"
             } finally {
                 _isLoading.value = false
                 _statusMessage.value = null
@@ -238,5 +253,17 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
 
     fun clearError() {
         _errorMessage.value = null
+    }
+
+    fun clearUserNotice() {
+        _userNotice.value = null
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> String.format(java.util.Locale.getDefault(), "%.1f KB", bytes / 1024f)
+            else -> String.format(java.util.Locale.getDefault(), "%.1f MB", bytes / (1024f * 1024f))
+        }
     }
 }

@@ -48,6 +48,7 @@ fun HomeScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val userNotice by viewModel.userNotice.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val context = LocalContext.current
 
@@ -72,6 +73,13 @@ fun HomeScreen(
         errorMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(userNotice) {
+        userNotice?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearUserNotice()
         }
     }
 
@@ -239,7 +247,7 @@ fun HomeScreen(
             }
         },
         floatingActionButton = {
-            if (!isSelectionMode) {
+            if (!isSelectionMode && documents.isNotEmpty()) {
                 ExtendedFloatingActionButton(
                     onClick = onStartScan,
                     icon = {
@@ -494,6 +502,7 @@ fun HomeScreen(
     // Compress Dialog
     showCompressDialog?.let { doc ->
         var selectedLevel by remember { mutableStateOf(CompressionLevel.BALANCED) }
+        var convertToGrayscale by remember { mutableStateOf(false) }
         var outputTitle by remember { mutableStateOf("${doc.title}_compressed") }
 
         AlertDialog(
@@ -508,7 +517,7 @@ fun HomeScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Current size: ${doc.formattedSize}",
+                        text = "Original file size: ${doc.formattedSize}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -547,6 +556,38 @@ fun HomeScreen(
                         }
                     }
 
+                    // PDF24 Grayscale Optimization Toggle
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { convertToGrayscale = !convertToGrayscale }
+                            .padding(vertical = 2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Black & White (Grayscale)",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "PDF24 mode: Drops color channels to cut up to 60% size",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = convertToGrayscale,
+                                onCheckedChange = { convertToGrayscale = it }
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
                         value = outputTitle,
@@ -561,7 +602,7 @@ fun HomeScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.compressDocument(doc, selectedLevel, outputTitle.trim())
+                        viewModel.compressDocument(doc, selectedLevel, convertToGrayscale, outputTitle.trim())
                         showCompressDialog = null
                     },
                     shape = RoundedCornerShape(10.dp)

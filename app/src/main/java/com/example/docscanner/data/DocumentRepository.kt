@@ -146,12 +146,14 @@ class DocumentRepository(private val context: Context) {
     suspend fun compressDocument(
         doc: ScannedDocument,
         level: CompressionLevel,
+        convertToGrayscale: Boolean,
         outputTitle: String
     ): ScannedDocument = withContext(Dispatchers.IO) {
         val compressedFile = PdfOperations.compressPdf(
             context = context,
             sourceFile = doc.file,
             level = level,
+            convertToGrayscale = convertToGrayscale,
             outputTitle = outputTitle
         )
         val thumbFile = File(scansDir, "Thumb_${compressedFile.nameWithoutExtension}.jpg")
