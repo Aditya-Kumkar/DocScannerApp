@@ -2,29 +2,30 @@ package com.example.docscanner.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Butter Light Palette
-val ButterYellow = Color(0xFFF5A623)
-val ButterGold = Color(0xFFE59400)
-val ButterContainerLight = Color(0xFFFFF3D6)
-val OnButterContainerLight = Color(0xFF472D00)
+// Calm & Serene Light Palette
+val ButterAccentLight = Color(0xFFD4971A)
+val ButterContainerLight = Color(0xFFFAF3E3)
+val OnButterContainerLight = Color(0xFF4A3400)
 
-val BackgroundLight = Color(0xFFFAF9F6) // Warm cream
+val BackgroundLight = Color(0xFFF9F9F7) // Calm, warm off-white canvas
 val SurfaceLight = Color(0xFFFFFFFF)
-val SurfaceVariantLight = Color(0xFFF1EFEA)
-val CardBorderLight = Color(0xFFE8E5DD)
-val TextPrimaryLight = Color(0xFF1F1E1B)
-val TextSecondaryLight = Color(0xFF75726B)
+val SurfaceVariantLight = Color(0xFFF2F1ED)
+val CardBorderLight = Color(0xFFE8E7E1)
+val TextPrimaryLight = Color(0xFF1A1A1A)
+val TextSecondaryLight = Color(0xFF706F6A)
+val ViewerBackgroundLight = Color(0xFFE9EAE8)
 
-// Butter Dark Palette
-val ButterYellowDark = Color(0xFFFFC53D)
-val ButterContainerDark = Color(0xFF382900)
-val OnButterContainerDark = Color(0xFFFFE7A8)
+// Calm & Serene Dark Palette
+val ButterAccentDark = Color(0xFFE2B24A)
+val ButterContainerDark = Color(0xFF2D2411)
+val OnButterContainerDark = Color(0xFFFBEBC7)
 
-val BackgroundDark = Color(0xFF121211) // Deep espresso / obsidian
-val SurfaceDark = Color(0xFF1B1A18)
-val SurfaceVariantDark = Color(0xFF262522)
-val CardBorderDark = Color(0xFF33312C)
-val TextPrimaryDark = Color(0xFFF5F3EF)
-val TextSecondaryDark = Color(0xFF9E9A91)
+val BackgroundDark = Color(0xFF131315) // Tranquil slate-black
+val SurfaceDark = Color(0xFF1C1C1E)
+val SurfaceVariantDark = Color(0xFF262629)
+val CardBorderDark = Color(0xFF2E2E32)
+val TextPrimaryDark = Color(0xFFEDEDED)
+val TextSecondaryDark = Color(0xFF8E8E93)
+val ViewerBackgroundDark = Color(0xFF0D0D0E)
 
-val AccentRed = Color(0xFFE53935)
+val AccentRed = Color(0xFFD9383A)

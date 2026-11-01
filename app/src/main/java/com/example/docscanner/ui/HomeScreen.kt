@@ -38,7 +38,8 @@ import com.example.docscanner.data.ScannedDocument
 @Composable
 fun HomeScreen(
     viewModel: DocumentScannerViewModel,
-    onStartScan: () -> Unit
+    onStartScan: () -> Unit,
+    onOpenDocument: (ScannedDocument) -> Unit
 ) {
     val documents by viewModel.documents.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -50,7 +51,6 @@ fun HomeScreen(
     var documentToDelete by remember { mutableStateOf<ScannedDocument?>(null) }
     var renameInputText by remember { mutableStateOf("") }
 
-    // Error toast
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -64,49 +64,31 @@ fun HomeScreen(
                 title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(10.dp),
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(38.dp)
+                            modifier = Modifier.size(34.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     text = "🧈",
-                                    fontSize = 20.sp
+                                    fontSize = 17.sp
                                 )
                             }
                         }
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "pdfbutter",
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Black,
-                                        letterSpacing = (-0.5).sp
-                                    )
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = "smooth",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                        }
+                        Text(
+                            text = "pdfbutter",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 19.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.3).sp
+                            )
+                        )
                     }
                 },
                 actions = {
-                    // Dark mode toggle button
                     IconButton(
                         onClick = { viewModel.toggleDarkMode() },
                         modifier = Modifier
@@ -114,14 +96,15 @@ fun HomeScreen(
                             .clip(CircleShape)
                     ) {
                         val (icon, description) = when (themeMode) {
-                            ThemeMode.SYSTEM -> Icons.Outlined.BrightnessAuto to "System Theme"
-                            ThemeMode.LIGHT -> Icons.Outlined.LightMode to "Light Mode"
-                            ThemeMode.DARK -> Icons.Outlined.DarkMode to "Dark Mode"
+                            ThemeMode.SYSTEM -> Icons.Outlined.BrightnessAuto to "Theme: System"
+                            ThemeMode.LIGHT -> Icons.Outlined.LightMode to "Theme: Light"
+                            ThemeMode.DARK -> Icons.Outlined.DarkMode to "Theme: Dark"
                         }
                         Icon(
                             imageVector = icon,
                             contentDescription = description,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 },
@@ -133,18 +116,24 @@ fun HomeScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onStartScan,
-                icon = { Text(text = "🧈", fontSize = 18.sp) },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
                 text = {
                     Text(
-                        text = "Scan PDF",
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.2.sp
+                        text = "Scan Document",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
                     )
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(18.dp),
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp)
             )
         }
     ) { innerPadding ->
@@ -155,28 +144,31 @@ fun HomeScreen(
                 .padding(innerPadding)
         ) {
             if (documents.isEmpty() && !isLoading) {
-                MinimalEmptyState(onStartScan = onStartScan)
+                CalmEmptyState(onStartScan = onStartScan)
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 96.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                .padding(horizontal = 4.dp, vertical = 6.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Your Scans (${documents.size})",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                text = "Documents",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "✨ Churned fresh",
+                                text = "${documents.size} ${if (documents.size == 1) "file" else "files"}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -186,7 +178,7 @@ fun HomeScreen(
                     items(documents, key = { it.id }) { doc ->
                         DocumentCard(
                             document = doc,
-                            onOpen = { openPdf(context, doc) },
+                            onOpen = { onOpenDocument(doc) },
                             onShare = { sharePdf(context, doc) },
                             onRename = {
                                 documentToRename = doc
@@ -198,7 +190,7 @@ fun HomeScreen(
                 }
             }
 
-            // Minimal progress indicator
+            // Serene progress notification
             AnimatedVisibility(
                 visible = isLoading,
                 enter = fadeIn(),
@@ -206,30 +198,30 @@ fun HomeScreen(
                 modifier = Modifier.align(Alignment.Center)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 6.dp,
-                    shadowElevation = 10.dp,
+                    shadowElevation = 6.dp,
                     modifier = Modifier.border(
                         1.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        RoundedCornerShape(20.dp)
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                        RoundedCornerShape(16.dp)
                     )
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         CircularProgressIndicator(
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 3.dp
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
                         )
                         Text(
-                            text = "Melting scan into PDF...",
+                            text = "Saving document...",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -241,39 +233,34 @@ fun HomeScreen(
     documentToRename?.let { doc ->
         AlertDialog(
             onDismissRequest = { documentToRename = null },
-            icon = { Text(text = "✏️", fontSize = 28.sp) },
             title = {
                 Text(
                     text = "Rename Document",
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Give your PDF a clean, recognizable name.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = renameInputText,
-                        onValueChange = { renameInputText = it },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                OutlinedTextField(
+                    value = renameInputText,
+                    onValueChange = { renameInputText = it },
+                    singleLine = true,
+                    label = { Text("File name") },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                )
             },
             confirmButton = {
-                Button(
+                TextButton(
                     onClick = {
                         val trimmed = renameInputText.trim()
                         if (trimmed.isNotEmpty()) {
                             viewModel.renameDocument(doc, trimmed)
                         }
                         documentToRename = null
-                    },
-                    shape = RoundedCornerShape(10.dp)
+                    }
                 ) {
                     Text("Save", fontWeight = FontWeight.SemiBold)
                 }
@@ -290,27 +277,27 @@ fun HomeScreen(
     documentToDelete?.let { doc ->
         AlertDialog(
             onDismissRequest = { documentToDelete = null },
-            icon = { Text(text = "🗑️", fontSize = 28.sp) },
             title = {
                 Text(
-                    text = "Delete PDF?",
-                    fontWeight = FontWeight.Bold
+                    text = "Delete Document",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
             },
             text = {
                 Text(
-                    text = "Are you sure you want to delete '${doc.title}'? This action cannot be undone.",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Are you sure you want to delete '${doc.title}'?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
-                Button(
+                TextButton(
                     onClick = {
                         viewModel.deleteDocument(doc)
                         documentToDelete = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    shape = RoundedCornerShape(10.dp)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text("Delete", fontWeight = FontWeight.SemiBold)
                 }
@@ -335,14 +322,14 @@ fun DocumentCard(
     var menuExpanded by remember { mutableStateOf(false) }
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .fillMaxWidth()
             .border(
                 1.dp,
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                RoundedCornerShape(16.dp)
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+                RoundedCornerShape(12.dp)
             )
             .clickable { onOpen() }
     ) {
@@ -352,147 +339,145 @@ fun DocumentCard(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Thumbnail or styled document icon
+            // Document thumbnail or page icon
             Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier
-                    .size(58.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(8.dp))
             ) {
                 if (document.thumbnailFile != null && document.thumbnailFile.exists()) {
                     AsyncImage(
                         model = document.thumbnailFile,
-                        contentDescription = "Thumbnail",
+                        contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(text = "📄", fontSize = 26.sp)
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.width(14.dp))
 
-            // Details
+            // Informative metadata
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = document.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(3.dp))
-                Text(
-                    text = document.formattedDate,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(5.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
-                    ) {
-                        Text(
-                            text = "${document.pageCount} ${if (document.pageCount == 1) "page" else "pages"}",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Text(
-                            text = document.formattedSize,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
+                    Text(
+                        text = document.formattedDate,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${document.pageCount} ${if (document.pageCount == 1) "page" else "pages"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = document.formattedSize,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
-            // Quick Share & Overflow Menu
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onShare) {
+            // Quiet options menu
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Outlined.Share,
-                        contentDescription = "Share",
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Options",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
 
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Options",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Open PDF") },
-                            onClick = {
-                                menuExpanded = false
-                                onOpen()
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.Visibility, contentDescription = null)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Rename") },
-                            onClick = {
-                                menuExpanded = false
-                                onRename()
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.Edit, contentDescription = null)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Share") },
-                            onClick = {
-                                menuExpanded = false
-                                onShare()
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.Share, contentDescription = null)
-                            }
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        DropdownMenuItem(
-                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            onClick = {
-                                menuExpanded = false
-                                onDelete()
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Outlined.Delete,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        )
-                    }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Open") },
+                        onClick = {
+                            menuExpanded = false
+                            onOpen()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Visibility, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Rename") },
+                        onClick = {
+                            menuExpanded = false
+                            onRename()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Share") },
+                        onClick = {
+                            menuExpanded = false
+                            onShare()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    DropdownMenuItem(
+                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
                 }
             }
         }
@@ -500,7 +485,7 @@ fun DocumentCard(
 }
 
 @Composable
-fun MinimalEmptyState(onStartScan: () -> Unit) {
+fun CalmEmptyState(onStartScan: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -509,80 +494,66 @@ fun MinimalEmptyState(onStartScan: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(96.dp)
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(72.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = "🧈",
-                    fontSize = 46.sp
+                Icon(
+                    imageVector = Icons.Outlined.Description,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(32.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
         Text(
-            text = "Smooth as butter.",
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-0.5).sp
-            )
+            text = "No documents yet",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 17.sp
+            ),
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = "No PDFs in the churn yet.\nTap below to scan with auto border detection.",
+            text = "Scanned documents and imported PDFs\nwill be listed here.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            lineHeight = 22.sp
+            lineHeight = 20.sp
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(22.dp))
 
         Button(
             onClick = onStartScan,
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ),
-            contentPadding = PaddingValues(horizontal = 22.dp, vertical = 12.dp)
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
         ) {
-            Text(text = "🧈", fontSize = 16.sp)
+            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Scan First Document", fontWeight = FontWeight.Bold)
+            Text("Scan Document", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
-    }
-}
-
-private fun getFileUri(context: Context, document: ScannedDocument): Uri {
-    return FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.provider",
-        document.file
-    )
-}
-
-private fun openPdf(context: Context, document: ScannedDocument) {
-    try {
-        val uri = getFileUri(context, document)
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/pdf")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        context.startActivity(Intent.createChooser(intent, "Open PDF"))
-    } catch (e: Exception) {
-        Toast.makeText(context, "No PDF viewer app found.", Toast.LENGTH_SHORT).show()
     }
 }
 
 private fun sharePdf(context: Context, document: ScannedDocument) {
     try {
-        val uri = getFileUri(context, document)
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            document.file
+        )
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "application/pdf"
             putExtra(Intent.EXTRA_STREAM, uri)
