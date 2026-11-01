@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.docscanner.data.CompressionLevel
 import com.example.docscanner.data.DocumentRepository
 import com.example.docscanner.data.ScannedDocument
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
@@ -28,8 +29,14 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
     private val _documents = MutableStateFlow<List<ScannedDocument>>(emptyList())
     val documents: StateFlow<List<ScannedDocument>> = _documents.asStateFlow()
 
+    private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedIds: StateFlow<Set<String>> = _selectedIds.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _statusMessage = MutableStateFlow<String?>(null)
+    val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
@@ -73,6 +80,102 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
+    // Selection management
+    fun toggleSelection(id: String) {
+        val current = _selectedIds.value.toMutableSet()
+        if (current.contains(id)) {
+            current.remove(id)
+        } else {
+            current.add(id)
+        }
+        _selectedIds.value = current
+    }
+
+    fun selectAll() {
+        if (_selectedIds.value.size == _documents.value.size) {
+            _selectedIds.value = emptySet()
+        } else {
+            _selectedIds.value = _documents.value.map { it.id }.toSet()
+        }
+    }
+
+    fun clearSelection() {
+        _selectedIds.value = emptySet()
+    }
+
+    // Merge operation
+    fun mergeSelected(outputTitle: String) {
+        val selected = _documents.value.filter { _selectedIds.value.contains(it.id) }
+        if (selected.size < 2) return
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            _statusMessage.value = "Merging ${selected.size} PDFs..."
+            try {
+                val mergedDoc = repository.mergeDocuments(selected, outputTitle)
+                _documents.value = listOf(mergedDoc) + _documents.value
+                clearSelection()
+            } catch (e: Exception) {
+                _errorMessage.value = "Merge failed: ${e.localizedMessage}"
+            } finally {
+                _isLoading.value = false
+                _statusMessage.value = null
+            }
+        }
+    }
+
+    // Split operation
+    fun splitDocument(document: ScannedDocument, fromPage: Int, toPage: Int, outputTitle: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _statusMessage.value = "Splitting pages $fromPage to $toPage..."
+            try {
+                val splitDoc = repository.splitDocument(document, fromPage, toPage, outputTitle)
+                _documents.value = listOf(splitDoc) + _documents.value
+                clearSelection()
+            } catch (e: Exception) {
+                _errorMessage.value = "Split failed: ${e.localizedMessage}"
+            } finally {
+                _isLoading.value = false
+                _statusMessage.value = null
+            }
+        }
+    }
+
+    // Compress operation
+    fun compressDocument(document: ScannedDocument, level: CompressionLevel, outputTitle: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _statusMessage.value = "Compressing PDF (${level.label})..."
+            try {
+                val compressedDoc = repository.compressDocument(document, level, outputTitle)
+                _documents.value = listOf(compressedDoc) + _documents.value
+                clearSelection()
+            } catch (e: Exception) {
+                _errorMessage.value = "Compression failed: ${e.localizedMessage}"
+            } finally {
+                _isLoading.value = false
+                _statusMessage.value = null
+            }
+        }
+    }
+
+    fun deleteSelected() {
+        val toDelete = _documents.value.filter { _selectedIds.value.contains(it.id) }
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                toDelete.forEach { repository.deleteDocument(it) }
+                _documents.value = _documents.value.filterNot { _selectedIds.value.contains(it.id) }
+                clearSelection()
+            } catch (e: Exception) {
+                _errorMessage.value = "Delete failed: ${e.localizedMessage}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun buildScannerOptions(pageLimit: Int = 50): GmsDocumentScannerOptions {
         return GmsDocumentScannerOptions.Builder()
             .setGalleryImportAllowed(true)
@@ -87,6 +190,7 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
 
         viewModelScope.launch {
             _isLoading.value = true
+            _statusMessage.value = "Saving scan..."
             try {
                 val pdf = result.pdf
                 val pdfUri = pdf?.uri
@@ -102,9 +206,10 @@ class DocumentScannerViewModel(application: Application) : AndroidViewModel(appl
                     _documents.value = listOf(savedDoc) + _documents.value
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to save scanned document: ${e.localizedMessage}"
+                _errorMessage.value = "Failed to save scan: ${e.localizedMessage}"
             } finally {
                 _isLoading.value = false
+                _statusMessage.value = null
             }
         }
     }

@@ -11,7 +11,6 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 class DocumentRepository(private val context: Context) {
 
@@ -24,10 +23,6 @@ class DocumentRepository(private val context: Context) {
             return dir
         }
 
-    /**
-     * Copies the scanned PDF and optional first page image from the ML Kit temporary URI
-     * to persistent app storage.
-     */
     suspend fun saveScan(
         sourcePdfUri: Uri?,
         pageCount: Int,
@@ -39,7 +34,6 @@ class DocumentRepository(private val context: Context) {
         val pdfFileName = "Scan_$dateString.pdf"
         val destinationPdfFile = File(scansDir, pdfFileName)
 
-        // Copy PDF stream
         sourcePdfUri?.let { uri ->
             context.contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(destinationPdfFile).use { output ->
@@ -48,7 +42,6 @@ class DocumentRepository(private val context: Context) {
             }
         }
 
-        // Copy first page as thumbnail if available
         var destinationThumbFile: File? = null
         firstPageUri?.let { thumbUri ->
             val thumbFileName = "Thumb_$dateString.jpg"
@@ -81,7 +74,6 @@ class DocumentRepository(private val context: Context) {
         val files = scansDir.listFiles { file -> file.extension.lowercase() == "pdf" } ?: return@withContext emptyList()
         files.sortedByDescending { it.lastModified() }.map { file ->
             val baseName = file.nameWithoutExtension
-            // Check for corresponding thumbnail
             val thumbName = if (baseName.startsWith("Scan_")) {
                 "Thumb_" + baseName.removePrefix("Scan_") + ".jpg"
             } else {
@@ -105,6 +97,72 @@ class DocumentRepository(private val context: Context) {
                 thumbnailFile = thumb
             )
         }
+    }
+
+    suspend fun mergeDocuments(
+        docs: List<ScannedDocument>,
+        outputTitle: String
+    ): ScannedDocument = withContext(Dispatchers.IO) {
+        val mergedFile = PdfOperations.mergePdfs(
+            context = context,
+            sourceFiles = docs.map { it.file },
+            outputTitle = outputTitle
+        )
+        val thumbFile = File(scansDir, "Thumb_${mergedFile.nameWithoutExtension}.jpg")
+        ScannedDocument(
+            id = mergedFile.name,
+            title = mergedFile.nameWithoutExtension,
+            file = mergedFile,
+            pageCount = getPdfPageCount(mergedFile),
+            timestamp = mergedFile.lastModified(),
+            thumbnailFile = if (thumbFile.exists()) thumbFile else null
+        )
+    }
+
+    suspend fun splitDocument(
+        doc: ScannedDocument,
+        fromPage: Int,
+        toPage: Int,
+        outputTitle: String
+    ): ScannedDocument = withContext(Dispatchers.IO) {
+        val splitFile = PdfOperations.splitPdf(
+            context = context,
+            sourceFile = doc.file,
+            fromPage = fromPage,
+            toPage = toPage,
+            outputTitle = outputTitle
+        )
+        val thumbFile = File(scansDir, "Thumb_${splitFile.nameWithoutExtension}.jpg")
+        ScannedDocument(
+            id = splitFile.name,
+            title = splitFile.nameWithoutExtension,
+            file = splitFile,
+            pageCount = getPdfPageCount(splitFile),
+            timestamp = splitFile.lastModified(),
+            thumbnailFile = if (thumbFile.exists()) thumbFile else null
+        )
+    }
+
+    suspend fun compressDocument(
+        doc: ScannedDocument,
+        level: CompressionLevel,
+        outputTitle: String
+    ): ScannedDocument = withContext(Dispatchers.IO) {
+        val compressedFile = PdfOperations.compressPdf(
+            context = context,
+            sourceFile = doc.file,
+            level = level,
+            outputTitle = outputTitle
+        )
+        val thumbFile = File(scansDir, "Thumb_${compressedFile.nameWithoutExtension}.jpg")
+        ScannedDocument(
+            id = compressedFile.name,
+            title = compressedFile.nameWithoutExtension,
+            file = compressedFile,
+            pageCount = getPdfPageCount(compressedFile),
+            timestamp = compressedFile.lastModified(),
+            thumbnailFile = if (thumbFile.exists()) thumbFile else null
+        )
     }
 
     suspend fun renameDocument(document: ScannedDocument, newTitle: String): ScannedDocument = withContext(Dispatchers.IO) {
