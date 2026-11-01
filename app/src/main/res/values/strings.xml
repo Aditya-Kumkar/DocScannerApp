@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">DocScanner</string>
+    <string name="scan_button">Scan Document</string>
+    <string name="no_documents">No scanned documents yet.\nTap the camera button below to start!</string>
+    <string name="share">Share</string>
+    <string name="delete">Delete</string>
+    <string name="view">View</string>
+</resources>
